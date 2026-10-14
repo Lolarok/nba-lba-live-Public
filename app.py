@@ -15,9 +15,9 @@ import pandas as pd
 import pathlib, sys, datetime, time
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "nba-lba-live-current"))
-sys.path.insert(0, ".")
-sys.path.insert(0, ".")
+
+
+
 
 # Import con fallback per Streamlit Cloud
 try:
@@ -27,13 +27,39 @@ try:
     from shotmap import fetch_lba_shots, fetch_nba_shots, render_shotmap_png
     from player_advanced import fetch_lba_player_advanced, fetch_nba_player_advanced
 except ImportError as e:
-    st.error(f"Import error: {e} - verifico moduli locali")
-    # Fallback mock per Streamlit Cloud se moduli non trovati
+    st.error(f"Import error: {e} - verifico moduli locali / {e} in shotmap.pyi - verifico moduli locali")
+    import pandas as pd, random, numpy as np
     def fetch_lba_live():
-        import pandas as pd
-        return pd.DataFrame([{"gameday":1,"date":"2026-10-12","hometeam":"Napoli Basketball","homecode":"NAP","awayteam":"Trento","awaycode":"TRE","score":94,"opp_score":81,"played":"true"}])
+        return pd.DataFrame([{"gameday":1,"date":"2026-10-12","hometeam":"Napoli Basketball","homecode":"NAP","awayteam":"Trento","awaycode":"TRE","score":94,"opp_score":81,"played":"true","homecode":"NAP","awaycode":"TRE"}])
     def compute_lba_standings_from_results(df):
-        return pd.DataFrame([{"TEAM":"NAP","TeamName":"Napoli Basketball","W":3,"L":0,"GP":3,"ORTG":121.8,"DRTG":106.4,"NETRTG":15.4}])
+        return pd.DataFrame([{"TEAM":"NAP","TeamName":"Napoli Basketball","W":3,"L":0,"GP":3,"ORTG":121.8,"DRTG":106.4,"NETRTG":15.4,"PF":280,"PA":250}])
+    def fetch_lba_team_advanced(): return pd.DataFrame([{"TEAM":"NAP","TeamName":"Napoli Basketball","W":3,"L":0,"GP":3,"ORTG":118,"DRTG":105,"NETRTG":13,"PACE":78,"eFG%":55,"TS%":59}])
+    def fetch_nba_team_advanced(): return pd.DataFrame([{"TEAM":"OKC","TeamName":"OKC Thunder","W":60,"L":12,"ORTG":118.9,"DRTG":107.7,"NETRTG":11.1}])
+    def fetch_lba_lineups(): return pd.DataFrame([{"TEAM":"NAP","Lineup":"Dowtin-Spissu-Petrucelli-Seljaas-Tarczewski","GP":2,"MIN":28.4,"ORTG":121.5,"DRTG":106.1,"NETRTG":15.4,"POSS":59,"PLUS_MINUS":10}])
+    def fetch_nba_lineups(): return pd.DataFrame([{"TEAM":"OKC","Lineup":"SGA-Dort-JDub-Chet","NETRTG":15.0,"MIN":100}])
+    def fetch_lba_player_advanced(): 
+        return pd.DataFrame([{"Player":"Jeff Dowtin","TEAM":"NAP","Pos":"PG","GP":3,"MIN":28.5,"ORTG":120,"DRTG":105,"NET":15,"eFG%":64.3,"TS%":68,"PER":22,"PTS":15.2,"FGA":14,"FGM":9},{"Player":"Andrej Jakimovski","TEAM":"NAP","Pos":"SF","GP":3,"MIN":26,"ORTG":115,"DRTG":108,"NET":7,"eFG%":50,"TS%":55,"PER":15,"PTS":10,"FGA":10,"FGM":5}])
+    def fetch_nba_player_advanced(): return pd.DataFrame([{"Player":"SGA","TEAM":"OKC","GP":76,"PER":30.2,"ORTG":124,"DRTG":107,"NET":16,"eFG%":58,"TS%":64}])
+    def fetch_lba_shots(player_name="Jeff Dowtin", team_code="NAP", season="2026-27"):
+        import pandas as pd, random, numpy as np
+        random.seed(hash(player_name)%1000); np.random.seed(hash(player_name)%1000)
+        n=14 if "dowtin" in player_name.lower() else 12
+        xs=np.random.normal(0,100,n); ys=np.random.normal(50,100,n)
+        made=[1]*9+[0]*5 if "dowtin" in player_name.lower() else [random.choice([0,1]) for _ in range(n)]
+        df=pd.DataFrame({"LOC_X":xs,"LOC_Y":ys,"SHOT_MADE_FLAG":made,"PLAYER_NAME":[player_name]*n,"TEAM_CODE":[team_code]*n})
+        df["ZONE"]="Mid-Range"
+        return df
+    def fetch_nba_shots(player_id=0, team_id=0, season="2024-25", season_type="Regular Season"):
+        import pandas as pd, numpy as np
+        xs=np.random.normal(0,100,30); ys=np.random.normal(100,120,30); made=np.random.choice([0,1],30)
+        return pd.DataFrame({"LOC_X":xs,"LOC_Y":ys,"SHOT_MADE_FLAG":made})
+    def render_shotmap_png(df, title="Shot Map", player_name="", team_code="", hexbin=False, league="LBA"):
+        from io import BytesIO
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots(figsize=(5,4.5))
+        ax.scatter(df["LOC_X"] if "LOC_X" in df.columns else [0], df["LOC_Y"] if "LOC_Y" in df.columns else [0], c="green")
+        ax.set_title(title)
+        buf=BytesIO(); plt.savefig(buf, format="png"); buf.seek(0); plt.close(fig); return buf
 
 st.set_page_config(page_title="NBA & LBA Live Lab 2026/27", page_icon="🏀", layout="wide", initial_sidebar_state="expanded")
 
